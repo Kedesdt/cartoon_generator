@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerador de Cartoon com IA</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎨 Gerador de Cartoon</h1>
+            <p>Transforme suas fotos em cartoon usando IA - Modo Rápido ou Alta Qualidade</p>
+        </header>
+
+        <div class="upload-section">
+            <form id="uploadForm" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label for="fileInput" class="file-label">
+                        <span class="file-icon">📁</span>
+                        <span class="file-text">Escolher Foto</span>
+                        <input type="file" id="fileInput" name="file" accept="image/*" required>
+                    </label>
+                    <span id="fileName" class="file-name"></span>
+                </div>
+
+                <div class="form-group">
+                    <label for="modeSelect">Modo de Processamento:</label>
+                    <select id="modeSelect" name="mode" onchange="updateStyleOptions()">
+                        <option value="fast">⚡ Rápido (CartoonGAN) - 1-5 segundos</option>
+                        <option value="quality">🎨 Alta Qualidade (ControlNet) - 30-60 segundos</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="styleSelect">Estilo:</label>
+                    <select id="styleSelect" name="style">
+                        <!-- Opções dinâmicas baseadas no modo -->
+                    </select>
+                </div>
+
+                <button type="submit" class="btn-submit" id="submitBtn">
+                    <span class="btn-text">Gerar Cartoon</span>
+                </button>
+            </form>
+
+            <div id="loading" class="loading hidden">
+                <div class="spinner"></div>
+                <p id="loadingText">Processando imagem...</p>
+            </div>
+
+            <div id="error" class="error hidden"></div>
+        </div>
+
+        <div id="results" class="results hidden">
+            <h2>Resultado</h2>
+            <div class="image-comparison">
+                <div class="image-box">
+                    <h3>Imagem Original</h3>
+                    <img id="inputImage" src="" alt="Imagem Original">
+                </div>
+                <div class="image-box">
+                    <h3>Cartoon Gerado</h3>
+                    <img id="outputImage" src="" alt="Cartoon Gerado">
+                    <a id="downloadLink" href="" download class="btn-download">⬇️ Download</a>
+                </div>
+            </div>
+            <button onclick="resetForm()" class="btn-reset">Nova Imagem</button>
+        </div>
+
+        <footer>
+            <p>Usando CartoonGAN (modo rápido) + ControlNet + Stable Diffusion (alta qualidade) | Open Source</p>
+        </footer>
+    </div>
+
+    <script>
+        const uploadForm = document.getElementById('uploadForm');
+        const fileInput = document.getElementById('fileInput');
+        const fileName = document.getElementById('fileName');
+        const loading = document.getElementById('loading');
+        const loadingText = document.getElementById('loadingText');
+        const error = document.getElementById('error');
+        const results = document.getElementById('results');
+        const submitBtn = document.getElementById('submitBtn');
+        const modeSelect = document.getElementById('modeSelect');
+        const styleSelect = document.getElementById('styleSelect');
+
+        // Estilos disponíveis para cada modo
+        const styleOptions = {
+            fast: {
+                'face_paint_512_v2': '🎨 Cartoon Moderno (Padrão)',
+                'paprika': '🌸 Paprika (Anime Vibrante)',
+                'hayao': '🎐 Hayao (Estilo Ghibli)',
+                'shinkai': '✨ Shinkai (Your Name Style)'
+            },
+            quality: {
+                'cartoon': '🎨 Cartoon (Desenho Animado)',
+                'anime': '🎌 Anime/Mangá',
+                'comic': '💥 Quadrinhos (Comic Book)',
+                'watercolor': '🖌️ Aquarela'
+            }
+        };
+
+        // Atualizar opções de estilo baseado no modo
+        function updateStyleOptions() {
+            const mode = modeSelect.value;
+            const styles = styleOptions[mode];
+            
+            styleSelect.innerHTML = '';
+            
+            for (const [value, label] of Object.entries(styles)) {
+                const option = document.createElement('option');
+                option.value = value;
+                option.textContent = label;
+                styleSelect.appendChild(option);
+            }
+            
+            // Atualizar texto de loading
+            if (mode === 'fast') {
+                loadingText.textContent = 'Processando com CartoonGAN... Isso leva apenas 1-5 segundos! ⚡';
+            } else {
+                loadingText.textContent = 'Processando com ControlNet... Isso pode levar 30-60 segundos 🎨';
+            }
+        }
+
+        // Inicializar opções
+        updateStyleOptions();
+
+        // Atualizar nome do arquivo selecionado
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                fileName.textContent = e.target.files[0].name;
+            } else {
+                fileName.textContent = '';
+            }
+        });
+
+        // Processar upload
+        uploadForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            // Esconder resultados e erros anteriores
+            results.classList.add('hidden');
+            error.classList.add('hidden');
+            
+            // Mostrar loading
+            loading.classList.remove('hidden');
+            submitBtn.disabled = true;
+
+            const formData = new FormData(uploadForm);
+
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    // Mostrar resultados
+                    document.getElementById('inputImage').src = data.input_image;
+                    document.getElementById('outputImage').src = data.output_image;
+                    document.getElementById('downloadLink').href = data.output_image;
+                    
+                    results.classList.remove('hidden');
+                } else {
+                    // Mostrar erro
+                    error.textContent = data.error || 'Erro ao processar imagem';
+                    error.classList.remove('hidden');
+                }
+            } catch (err) {
+                error.textContent = 'Erro de conexão com o servidor';
+                error.classList.remove('hidden');
+            } finally {
+                loading.classList.add('hidden');
+                submitBtn.disabled = false;
+            }
+        });
+
+        function resetForm() {
+            uploadForm.reset();
+            fileName.textContent = '';
+            results.classList.add('hidden');
+            error.classList.add('hidden');
+        }
+    </script>
+</body>
+</html>

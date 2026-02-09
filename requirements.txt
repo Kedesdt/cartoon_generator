@@ -1,0 +1,11 @@
+flask
+torch
+torchvision
+diffusers
+transformers
+accelerate
+pillow
+controlnet-aux
+opencv-python
+numpy
+timm

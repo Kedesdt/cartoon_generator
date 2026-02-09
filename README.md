@@ -1,0 +1,108 @@
+# Gerador de Cartoon com IA
+
+Aplicação Flask que transforma fotos em cartoon usando ControlNet + Stable Diffusion.
+
+## 🎨 Características
+
+- Upload de imagens (PNG, JPG, JPEG, WEBP)
+- 4 estilos diferentes:
+  - Cartoon (Desenho Animado)
+  - Anime/Mangá
+  - Quadrinhos (Comic Book)
+  - Aquarela
+- Interface web responsiva e amigável
+- Processamento local (open source)
+
+## 🚀 Instalação
+
+### 1. Instalar dependências
+
+```bash
+pip install -r requirements.txt
+```
+
+**Nota:** A instalação pode demorar alguns minutos devido ao tamanho dos pacotes.
+
+### 2. Requisitos de Sistema
+
+- **GPU (Recomendado):** NVIDIA com CUDA para processamento rápido
+- **CPU:** Funciona, mas mais lento (1-3 minutos por imagem)
+- **RAM:** Mínimo 8GB (16GB recomendado)
+- **Espaço em disco:** ~6GB para modelos baixados
+
+## 💻 Como Usar
+
+### 1. Executar a aplicação
+
+```bash
+python app.py
+```
+
+### 2. Acessar no navegador
+
+Abra: `http://localhost:5000`
+
+### 3. Processo
+
+1. Clique em "Escolher Foto" e selecione uma imagem
+2. Escolha o estilo desejado
+3. Clique em "Gerar Cartoon"
+4. Aguarde 30-60 segundos (primeira vez pode demorar mais)
+5. Veja o resultado e faça download se desejar
+
+## 📋 Primeira Execução
+
+Na primeira vez que você executar, os modelos serão baixados automaticamente:
+
+- ControlNet Canny (~1.5GB)
+- Stable Diffusion v1.5 (~4GB)
+
+Isso é feito uma única vez. Nas próximas execuções, os modelos já estarão salvos.
+
+## 🛠️ Tecnologias
+
+- **Flask:** Framework web
+- **ControlNet:** Controle de geração de imagem
+- **Stable Diffusion:** Modelo de geração de imagem
+- **Diffusers (Hugging Face):** Pipeline de processamento
+- **PyTorch:** Framework de deep learning
+
+## 📝 Estrutura do Projeto
+
+```
+image_generator/
+├── app.py                 # Aplicação Flask
+├── model.py              # Lógica do ControlNet
+├── requirements.txt      # Dependências
+├── templates/
+│   └── index.html       # Interface web
+├── static/
+│   ├── css/
+│   │   └── style.css    # Estilos
+│   ├── uploads/         # Imagens enviadas
+│   └── outputs/         # Cartoons gerados
+└── README.md
+```
+
+## ⚠️ Resolução de Problemas
+
+### GPU não detectada
+
+- Verifique se CUDA está instalado: `nvidia-smi`
+- Instale PyTorch com CUDA: https://pytorch.org/get-started/locally/
+
+### Memória insuficiente
+
+- Feche outros programas
+- Use imagens menores (máx 768px)
+- A aplicação já otimiza automaticamente
+
+### Erro ao baixar modelos
+
+- Verifique sua conexão com a internet
+- Pode precisar de VPN se houver restrição regional
+- Os modelos são baixados de huggingface.co
+
+## 📄 Licença
+
+Open Source - Livre para uso pessoal e comercial

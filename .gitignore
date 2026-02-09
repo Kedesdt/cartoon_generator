@@ -1,0 +1,36 @@
+# Arquivos temporários
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+.Python
+
+# Ambientes virtuais
+venv/
+env/
+ENV/
+.venv
+
+# Uploads e outputs
+static/uploads/*
+static/outputs/*
+!static/uploads/.gitkeep
+!static/outputs/.gitkeep
+
+# Cache do modelo
+.cache/
+models/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
