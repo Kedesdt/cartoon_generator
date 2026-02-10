@@ -85,33 +85,42 @@
         const modeSelect = document.getElementById('modeSelect');
         const styleSelect = document.getElementById('styleSelect');
 
-        // Estilos disponíveis para cada modo
-        const styleOptions = {
-            fast: {
-                'face_paint_512_v2': '🎨 Cartoon Moderno (Padrão)',
-                'paprika': '🌸 Paprika (Anime Vibrante)',
-                'hayao': '🎐 Hayao (Estilo Ghibli)',
-                'shinkai': '✨ Shinkai (Your Name Style)'
-            },
-            quality: {
-                'cartoon': '🎨 Cartoon (Desenho Animado)',
-                'anime': '🎌 Anime/Mangá',
-                'comic': '💥 Quadrinhos (Comic Book)',
-                'watercolor': '🖌️ Aquarela'
+        // Variável global para armazenar os estilos
+        let styleOptions = {};
+
+        // Carregar estilos do servidor
+        async function loadStyles() {
+            try {
+                const response = await fetch('/api/styles');
+                styleOptions = await response.json();
+                updateStyleOptions();
+            } catch (err) {
+                console.error('Erro ao carregar estilos:', err);
+                // Fallback para estilos padrão se houver erro
+                styleOptions = {
+                    fast: {
+                        'face_paint_512_v2': { name: '🎨 Cartoon Moderno', description: 'Padrão' }
+                    },
+                    quality: {
+                        'cartoon': { name: '🎨 Cartoon', description: 'Padrão', prompt: '' }
+                    }
+                };
+                updateStyleOptions();
             }
-        };
+        }
 
         // Atualizar opções de estilo baseado no modo
         function updateStyleOptions() {
             const mode = modeSelect.value;
-            const styles = styleOptions[mode];
+            const styles = styleOptions[mode] || {};
             
             styleSelect.innerHTML = '';
             
-            for (const [value, label] of Object.entries(styles)) {
+            for (const [value, config] of Object.entries(styles)) {
                 const option = document.createElement('option');
                 option.value = value;
-                option.textContent = label;
+                option.textContent = config.name || value;
+                option.title = config.description || '';
                 styleSelect.appendChild(option);
             }
             
@@ -123,8 +132,8 @@
             }
         }
 
-        // Inicializar opções
-        updateStyleOptions();
+        // Inicializar: carregar estilos do servidor
+        loadStyles();
 
         // Atualizar nome do arquivo selecionado
         fileInput.addEventListener('change', (e) => {

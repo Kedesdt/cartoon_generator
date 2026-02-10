@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, send_from_directory, jsonify
 import os
+import json
 from werkzeug.utils import secure_filename
 from cartoon_models import generator, fast_generator
 import uuid
@@ -30,6 +31,18 @@ def allowed_file(filename):
 def index():
     """Página principal"""
     return render_template("index.html")
+
+
+@app.route("/api/styles")
+def get_styles():
+    """Retorna os estilos disponíveis do arquivo JSON"""
+    try:
+        styles_path = os.path.join(os.path.dirname(__file__), "styles.json")
+        with open(styles_path, 'r', encoding='utf-8') as f:
+            styles = json.load(f)
+        return jsonify(styles)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/upload", methods=["POST"])

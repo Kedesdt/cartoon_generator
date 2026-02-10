@@ -9,6 +9,7 @@ from PIL import Image
 import numpy as np
 import cv2
 import os
+import json
 from torchvision import transforms
 
 
@@ -17,24 +18,33 @@ def setup_local_cache():
     # Obter diretório do projeto
     project_dir = os.path.dirname(os.path.abspath(__file__))
     cache_dir = os.path.join(project_dir, "huggingface")
-    
+
     # Criar diretório se não existir
     os.makedirs(cache_dir, exist_ok=True)
-    
+
     # Configurar variáveis de ambiente para HF cache
-    os.environ['HF_HOME'] = cache_dir
-    os.environ['TRANSFORMERS_CACHE'] = cache_dir
-    os.environ['HF_HUB_CACHE'] = cache_dir
-    
+    os.environ["HF_HOME"] = cache_dir
+    os.environ["TRANSFORMERS_CACHE"] = cache_dir
+    os.environ["HF_HUB_CACHE"] = cache_dir
+
     print(f"Cache configurado para: {cache_dir}")
     return cache_dir
+
+
+def load_styles_config():
+    """Carrega configuração de estilos do arquivo JSON"""
+    project_dir = os.path.dirname(os.path.abspath(__file__))
+    styles_path = os.path.join(project_dir, "styles.json")
+
+    with open(styles_path, "r", encoding="utf-8") as f:
+        return json.load(f)
 
 
 class CartoonGenerator:
     def __init__(self):
         # Configurar cache local antes de qualquer carregamento
         setup_local_cache()
-        
+
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.pipe = None
         self.canny_detector = None
@@ -56,6 +66,8 @@ class CartoonGenerator:
         # Carregar Stable Diffusion com ControlNet
         self.pipe = StableDiffusionControlNetPipeline.from_pretrained(
             "runwayml/stable-diffusion-v1-5",
+            # "stabilityai/stable-diffusion-2-1",
+            # "stabilityai/stable-diffusion-xl-base-1.0",
             controlnet=controlnet,
             torch_dtype=torch.float16 if self.device == "cuda" else torch.float32,
             safety_checker=None,
@@ -102,15 +114,15 @@ class CartoonGenerator:
         print("Detectando bordas...")
         canny_image = self.canny_detector(input_image)
 
-        # Prompts baseados no estilo escolhido
-        style_prompts = {
-            "cartoon": "cartoon style, vibrant colors, bold outlines, cel shaded, animation style, colorful, detailed, high quality",
-            "anime": "anime style, manga art, vibrant colors, detailed eyes, japanese animation, high quality",
-            "comic": "comic book style, pop art, bold colors, halftone dots, graphic novel, detailed",
-            "watercolor": "watercolor painting, soft colors, artistic, painterly, beautiful, detailed",
-        }
+        # Carregar prompts do arquivo JSON
+        styles_config = load_styles_config()
+        quality_styles = styles_config.get("quality", {})
 
-        prompt = style_prompts.get(style, style_prompts["cartoon"])
+        # Obter configuração do estilo
+        style_config = quality_styles.get(style, quality_styles.get("cartoon", {}))
+        prompt = style_config.get(
+            "prompt", "cartoon style, vibrant colors, detailed, high quality"
+        )
         negative_prompt = "ugly, blurry, low quality, distorted, deformed, bad anatomy, watermark, text"
 
         print(f"Gerando imagem no estilo {style}...")
@@ -147,42 +159,43 @@ generator = CartoonGenerator()
 
 class CartoonGANGenerator:
     """Gerador rápido usando AnimeGAN2 (CartoonGAN)"""
-    
+
     def __init__(self):
         # Configurar cache local antes de qualquer carregamento
         setup_local_cache()
-        
+
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.models = {}
         print(f"CartoonGAN usando dispositivo: {self.device}")
-    
+
     def preprocess_image(self, img):
         """
         Melhora a qualidade da imagem de entrada antes do processamento
         """
         from PIL import ImageEnhance, ImageFilter
-        
+
         # Aplicar um filtro suave para reduzir ruído
         img = img.filter(ImageFilter.UnsharpMask(radius=1, percent=100, threshold=3))
-        
+
         # Ajustar brilho automaticamente se a imagem estiver muito escura ou clara
         import numpy as np
+
         img_array = np.array(img)
         brightness = np.mean(img_array)
-        
+
         if brightness < 100:  # Imagem muito escura
             enhancer = ImageEnhance.Brightness(img)
             img = enhancer.enhance(1.2)
         elif brightness > 200:  # Imagem muito clara
             enhancer = ImageEnhance.Brightness(img)
             img = enhancer.enhance(0.9)
-        
+
         return img
-    
+
     def load_model(self, style="face_paint_512_v2"):
         """
         Carrega modelo AnimeGAN2
-        
+
         Estilos disponíveis:
         - face_paint_512_v2: Cartoon ocidental moderno
         - paprika: Anime vibrante e colorido
@@ -191,16 +204,16 @@ class CartoonGANGenerator:
         """
         if style in self.models:
             return self.models[style]
-        
+
         print(f"Carregando modelo CartoonGAN ({style})...")
-        
+
         try:
             model = torch.hub.load(
-                'bryandlee/animegan2-pytorch:main',
-                'generator',
+                "bryandlee/animegan2-pytorch:main",
+                "generator",
                 pretrained=style,
                 device=self.device,
-                progress=True
+                progress=True,
             )
             model.eval()
             self.models[style] = model
@@ -213,97 +226,96 @@ class CartoonGANGenerator:
                 print("Usando modelo padrão face_paint_512_v2")
                 return self.load_model("face_paint_512_v2")
             raise
-    
+
     def process_image(self, image_path, output_path, style="face_paint_512_v2"):
         """
         Processa imagem rapidamente com CartoonGAN
-        
+
         Args:
             image_path: Caminho da imagem de entrada
             output_path: Caminho para salvar
             style: Estilo do cartoon (face_paint_512_v2, paprika, hayao, shinkai)
         """
         model = self.load_model(style)
-        
+
         # Carregar imagem
-        img = Image.open(image_path).convert('RGB')
-        
+        img = Image.open(image_path).convert("RGB")
+
         # Pré-processar imagem para melhor qualidade
         img = self.preprocess_image(img)
-        
+
         original_size = img.size
-        
+
         # Calcular novo tamanho mantendo aspect ratio
         # Redimensionar para que a maior dimensão seja 512
         max_size = 512
         ratio = min(max_size / img.width, max_size / img.height)
         new_width = int(img.width * ratio)
         new_height = int(img.height * ratio)
-        
+
         # Redimensionar mantendo proporção
         img_resized = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
-        
+
         # Criar imagem quadrada com padding
-        square_img = Image.new('RGB', (max_size, max_size), (255, 255, 255))
+        square_img = Image.new("RGB", (max_size, max_size), (255, 255, 255))
         offset_x = (max_size - new_width) // 2
         offset_y = (max_size - new_height) // 2
         square_img.paste(img_resized, (offset_x, offset_y))
-        
+
         # Preparar transformações com normalização adequada
-        transform = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
-        ])
-        
+        transform = transforms.Compose(
+            [
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
+            ]
+        )
+
         # Converter para tensor
         img_tensor = transform(square_img).unsqueeze(0)
-        
+
         # Mover para device
         img_tensor = img_tensor.to(self.device)
-        
+
         print(f"Gerando cartoon no estilo {style}...")
-        
+
         # Gerar cartoon
         with torch.no_grad():
             cartoon_tensor = model(img_tensor)
-        
+
         # Desnormalizar e converter de volta para imagem
         cartoon_tensor = cartoon_tensor.cpu().squeeze(0)
         # Desnormalizar
         cartoon_tensor = cartoon_tensor * 0.5 + 0.5
         # Clampar valores entre 0 e 1
         cartoon_tensor = torch.clamp(cartoon_tensor, 0, 1)
-        
+
         cartoon_img = transforms.ToPILImage()(cartoon_tensor)
-        
+
         # Extrair a região sem padding
-        cartoon_cropped = cartoon_img.crop((
-            offset_x, 
-            offset_y, 
-            offset_x + new_width, 
-            offset_y + new_height
-        ))
-        
+        cartoon_cropped = cartoon_img.crop(
+            (offset_x, offset_y, offset_x + new_width, offset_y + new_height)
+        )
+
         # Redimensionar de volta ao tamanho original
         cartoon_final = cartoon_cropped.resize(original_size, Image.Resampling.LANCZOS)
-        
+
         # Aplicar melhoria de qualidade: ajustar contraste e saturação
         from PIL import ImageEnhance
-        
+
         # Melhorar contraste ligeiramente
         enhancer = ImageEnhance.Contrast(cartoon_final)
         cartoon_final = enhancer.enhance(1.1)
-        
+
         # Melhorar saturação ligeiramente
         enhancer = ImageEnhance.Color(cartoon_final)
         cartoon_final = enhancer.enhance(1.15)
-        
+
         # Salvar com qualidade máxima
         cartoon_final.save(output_path, quality=95, optimize=True)
         print(f"Imagem salva em: {output_path}")
-        
+
         return output_path
-    
+
     def cleanup(self):
         """Libera memória"""
         for model in self.models.values():
