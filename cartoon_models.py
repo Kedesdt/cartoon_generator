@@ -12,8 +12,29 @@ import os
 from torchvision import transforms
 
 
+def setup_local_cache():
+    """Configura cache local do Hugging Face na pasta do projeto"""
+    # Obter diretório do projeto
+    project_dir = os.path.dirname(os.path.abspath(__file__))
+    cache_dir = os.path.join(project_dir, "huggingface")
+    
+    # Criar diretório se não existir
+    os.makedirs(cache_dir, exist_ok=True)
+    
+    # Configurar variáveis de ambiente para HF cache
+    os.environ['HF_HOME'] = cache_dir
+    os.environ['TRANSFORMERS_CACHE'] = cache_dir
+    os.environ['HF_HUB_CACHE'] = cache_dir
+    
+    print(f"Cache configurado para: {cache_dir}")
+    return cache_dir
+
+
 class CartoonGenerator:
     def __init__(self):
+        # Configurar cache local antes de qualquer carregamento
+        setup_local_cache()
+        
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.pipe = None
         self.canny_detector = None
@@ -128,9 +149,35 @@ class CartoonGANGenerator:
     """Gerador rápido usando AnimeGAN2 (CartoonGAN)"""
     
     def __init__(self):
+        # Configurar cache local antes de qualquer carregamento
+        setup_local_cache()
+        
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.models = {}
         print(f"CartoonGAN usando dispositivo: {self.device}")
+    
+    def preprocess_image(self, img):
+        """
+        Melhora a qualidade da imagem de entrada antes do processamento
+        """
+        from PIL import ImageEnhance, ImageFilter
+        
+        # Aplicar um filtro suave para reduzir ruído
+        img = img.filter(ImageFilter.UnsharpMask(radius=1, percent=100, threshold=3))
+        
+        # Ajustar brilho automaticamente se a imagem estiver muito escura ou clara
+        import numpy as np
+        img_array = np.array(img)
+        brightness = np.mean(img_array)
+        
+        if brightness < 100:  # Imagem muito escura
+            enhancer = ImageEnhance.Brightness(img)
+            img = enhancer.enhance(1.2)
+        elif brightness > 200:  # Imagem muito clara
+            enhancer = ImageEnhance.Brightness(img)
+            img = enhancer.enhance(0.9)
+        
+        return img
     
     def load_model(self, style="face_paint_512_v2"):
         """
@@ -178,18 +225,38 @@ class CartoonGANGenerator:
         """
         model = self.load_model(style)
         
-        # Preparar transformações
-        face2paint = transforms.Compose([
-            transforms.Resize((512, 512)),
-            transforms.ToTensor()
-        ])
-        
         # Carregar imagem
         img = Image.open(image_path).convert('RGB')
+        
+        # Pré-processar imagem para melhor qualidade
+        img = self.preprocess_image(img)
+        
         original_size = img.size
         
+        # Calcular novo tamanho mantendo aspect ratio
+        # Redimensionar para que a maior dimensão seja 512
+        max_size = 512
+        ratio = min(max_size / img.width, max_size / img.height)
+        new_width = int(img.width * ratio)
+        new_height = int(img.height * ratio)
+        
+        # Redimensionar mantendo proporção
+        img_resized = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+        
+        # Criar imagem quadrada com padding
+        square_img = Image.new('RGB', (max_size, max_size), (255, 255, 255))
+        offset_x = (max_size - new_width) // 2
+        offset_y = (max_size - new_height) // 2
+        square_img.paste(img_resized, (offset_x, offset_y))
+        
+        # Preparar transformações com normalização adequada
+        transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
+        ])
+        
         # Converter para tensor
-        img_tensor = face2paint(img).unsqueeze(0)
+        img_tensor = transform(square_img).unsqueeze(0)
         
         # Mover para device
         img_tensor = img_tensor.to(self.device)
@@ -200,15 +267,39 @@ class CartoonGANGenerator:
         with torch.no_grad():
             cartoon_tensor = model(img_tensor)
         
-        # Converter de volta para imagem
+        # Desnormalizar e converter de volta para imagem
         cartoon_tensor = cartoon_tensor.cpu().squeeze(0)
+        # Desnormalizar
+        cartoon_tensor = cartoon_tensor * 0.5 + 0.5
+        # Clampar valores entre 0 e 1
+        cartoon_tensor = torch.clamp(cartoon_tensor, 0, 1)
+        
         cartoon_img = transforms.ToPILImage()(cartoon_tensor)
         
-        # Redimensionar de volta ao tamanho original
-        cartoon_img = cartoon_img.resize(original_size, Image.Resampling.LANCZOS)
+        # Extrair a região sem padding
+        cartoon_cropped = cartoon_img.crop((
+            offset_x, 
+            offset_y, 
+            offset_x + new_width, 
+            offset_y + new_height
+        ))
         
-        # Salvar
-        cartoon_img.save(output_path)
+        # Redimensionar de volta ao tamanho original
+        cartoon_final = cartoon_cropped.resize(original_size, Image.Resampling.LANCZOS)
+        
+        # Aplicar melhoria de qualidade: ajustar contraste e saturação
+        from PIL import ImageEnhance
+        
+        # Melhorar contraste ligeiramente
+        enhancer = ImageEnhance.Contrast(cartoon_final)
+        cartoon_final = enhancer.enhance(1.1)
+        
+        # Melhorar saturação ligeiramente
+        enhancer = ImageEnhance.Color(cartoon_final)
+        cartoon_final = enhancer.enhance(1.15)
+        
+        # Salvar com qualidade máxima
+        cartoon_final.save(output_path, quality=95, optimize=True)
         print(f"Imagem salva em: {output_path}")
         
         return output_path

@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, send_from_directory, jsonify
 import os
 from werkzeug.utils import secure_filename
-from model import generator, fast_generator
+from cartoon_models import generator, fast_generator
 import uuid
 from datetime import datetime
 
