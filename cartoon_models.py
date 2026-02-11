@@ -1,6 +1,7 @@
 import torch
 from diffusers import (
     StableDiffusionControlNetPipeline,
+    StableDiffusionImg2ImgPipeline,
     ControlNetModel,
     UniPCMultistepScheduler,
 )
@@ -10,6 +11,7 @@ import numpy as np
 import cv2
 import os
 import json
+import time
 from torchvision import transforms
 
 
@@ -46,50 +48,85 @@ class CartoonGenerator:
         setup_local_cache()
 
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.pipe = None
+        self.controlnet_pipe = None
+        self.img2img_pipe = None
         self.canny_detector = None
         print(f"Usando dispositivo: {self.device}")
 
-    def load_model(self):
-        """Carrega os modelos ControlNet e Stable Diffusion"""
-        if self.pipe is not None:
-            return
+    def load_model(self, method="controlnet"):
+        """
+        Carrega os modelos Stable Diffusion
 
-        print("Carregando modelos... Isso pode demorar alguns minutos na primeira vez.")
+        Args:
+            method: "controlnet" ou "img2img"
+        """
+        if method == "controlnet":
+            if self.controlnet_pipe is not None:
+                return
 
-        # Carregar ControlNet Canny
-        controlnet = ControlNetModel.from_pretrained(
-            "lllyasviel/sd-controlnet-canny",
-            torch_dtype=torch.float16 if self.device == "cuda" else torch.float32,
-        )
+            print(
+                "Carregando ControlNet... Isso pode demorar alguns minutos na primeira vez."
+            )
 
-        # Carregar Stable Diffusion com ControlNet
-        self.pipe = StableDiffusionControlNetPipeline.from_pretrained(
-            "runwayml/stable-diffusion-v1-5",
-            # "stabilityai/stable-diffusion-2-1",
-            # "stabilityai/stable-diffusion-xl-base-1.0",
-            controlnet=controlnet,
-            torch_dtype=torch.float16 if self.device == "cuda" else torch.float32,
-            safety_checker=None,
-        )
+            # Carregar ControlNet Canny
+            controlnet = ControlNetModel.from_pretrained(
+                "lllyasviel/sd-controlnet-canny",
+                torch_dtype=torch.float16 if self.device == "cuda" else torch.float32,
+            )
 
-        # Otimizações
-        self.pipe.scheduler = UniPCMultistepScheduler.from_config(
-            self.pipe.scheduler.config
-        )
-        self.pipe = self.pipe.to(self.device)
+            # Carregar Stable Diffusion com ControlNet
+            self.controlnet_pipe = StableDiffusionControlNetPipeline.from_pretrained(
+                "runwayml/stable-diffusion-v1-5",
+                controlnet=controlnet,
+                torch_dtype=torch.float16 if self.device == "cuda" else torch.float32,
+                safety_checker=None,
+            )
 
-        # Habilitar otimizações de memória
-        if self.device == "cuda":
-            self.pipe.enable_model_cpu_offload()
-            # self.pipe.enable_xformers_memory_efficient_attention()
+            # Otimizações
+            self.controlnet_pipe.scheduler = UniPCMultistepScheduler.from_config(
+                self.controlnet_pipe.scheduler.config
+            )
+            self.controlnet_pipe = self.controlnet_pipe.to(self.device)
 
-        # Detector Canny
-        self.canny_detector = CannyDetector()
+            # Habilitar otimizações de memória
+            if self.device == "cuda":
+                self.controlnet_pipe.enable_model_cpu_offload()
 
-        print("Modelos carregados com sucesso!")
+            # Detector Canny
+            self.canny_detector = CannyDetector()
 
-    def process_image(self, image_path, output_path, style="cartoon"):
+            print("ControlNet carregado com sucesso!")
+
+        else:  # img2img
+            if self.img2img_pipe is not None:
+                return
+
+            print(
+                "Carregando Img2Img... Isso pode demorar alguns minutos na primeira vez."
+            )
+
+            # Carregar Stable Diffusion Img2Img
+            self.img2img_pipe = StableDiffusionImg2ImgPipeline.from_pretrained(
+                "runwayml/stable-diffusion-v1-5",
+                torch_dtype=torch.float16 if self.device == "cuda" else torch.float32,
+                safety_checker=None,
+            )
+
+            # Otimizações
+            self.img2img_pipe.scheduler = UniPCMultistepScheduler.from_config(
+                self.img2img_pipe.scheduler.config
+            )
+            self.img2img_pipe = self.img2img_pipe.to(self.device)
+
+            # Habilitar otimizações de memória
+            if self.device == "cuda":
+                self.img2img_pipe.enable_model_cpu_offload()
+
+            print("Img2Img carregado com sucesso!")
+
+    def process_image(
+        self, image_path, output_path, style="cartoon", method="controlnet"
+    ):
         """
         Processa a imagem e transforma em cartoon
 
@@ -97,8 +134,14 @@ class CartoonGenerator:
             image_path: Caminho da imagem de entrada
             output_path: Caminho para salvar a imagem gerada
             style: Estilo do cartoon (cartoon, anime, comic, etc)
+            method: "controlnet" (preserva estrutura) ou "img2img" (preserva cores)
+
+        Returns:
+            tuple: (output_path, processing_time)
         """
-        self.load_model()
+        start_time = time.time()
+
+        self.load_model(method)
 
         # Carregar e preparar imagem
         input_image = Image.open(image_path).convert("RGB")
@@ -109,10 +152,6 @@ class CartoonGenerator:
         if ratio < 1:
             new_size = (int(input_image.width * ratio), int(input_image.height * ratio))
             input_image = input_image.resize(new_size, Image.Resampling.LANCZOS)
-
-        # Detectar bordas com Canny
-        print("Detectando bordas...")
-        canny_image = self.canny_detector(input_image)
 
         # Carregar prompts do arquivo JSON
         styles_config = load_styles_config()
@@ -125,30 +164,53 @@ class CartoonGenerator:
         )
         negative_prompt = "ugly, blurry, low quality, distorted, deformed, bad anatomy, watermark, text"
 
-        print(f"Gerando imagem no estilo {style}...")
+        print(f"Gerando imagem no estilo {style} usando {method}...")
 
-        # Gerar imagem
+        # Gerar imagem baseado no método
         with torch.inference_mode():
-            result = self.pipe(
-                prompt=prompt,
-                negative_prompt=negative_prompt,
-                image=canny_image,
-                num_inference_steps=20,
-                guidance_scale=7.5,
-                controlnet_conditioning_scale=0.8,
-            ).images[0]
+            if method == "controlnet":
+                # Detectar bordas com Canny
+                print("Detectando bordas...")
+                canny_image = self.canny_detector(input_image)
+
+                result = self.controlnet_pipe(
+                    prompt=prompt,
+                    negative_prompt=negative_prompt,
+                    image=canny_image,
+                    num_inference_steps=20,
+                    guidance_scale=7.5,
+                    controlnet_conditioning_scale=0.8,
+                ).images[0]
+            else:  # img2img
+                result = self.img2img_pipe(
+                    prompt=prompt,
+                    negative_prompt=negative_prompt,
+                    image=input_image,
+                    strength=0.65,  # Preserva 35% da imagem original
+                    num_inference_steps=30,
+                    guidance_scale=7.5,
+                ).images[0]
 
         # Salvar resultado
         result.save(output_path)
-        print(f"Imagem salva em: {output_path}")
 
-        return output_path
+        # Calcular tempo total
+        end_time = time.time()
+        processing_time = end_time - start_time
+
+        print(f"Imagem salva em: {output_path}")
+        print(f"⏱️ Tempo de processamento: {processing_time:.2f} segundos")
+
+        return output_path, processing_time
 
     def cleanup(self):
         """Libera memória"""
-        if self.pipe is not None:
-            del self.pipe
-            self.pipe = None
+        if self.controlnet_pipe is not None:
+            del self.controlnet_pipe
+            self.controlnet_pipe = None
+        if self.img2img_pipe is not None:
+            del self.img2img_pipe
+            self.img2img_pipe = None
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
@@ -235,7 +297,12 @@ class CartoonGANGenerator:
             image_path: Caminho da imagem de entrada
             output_path: Caminho para salvar
             style: Estilo do cartoon (face_paint_512_v2, paprika, hayao, shinkai)
+
+        Returns:
+            tuple: (output_path, processing_time)
         """
+        start_time = time.time()
+
         model = self.load_model(style)
 
         # Carregar imagem
@@ -312,9 +379,15 @@ class CartoonGANGenerator:
 
         # Salvar com qualidade máxima
         cartoon_final.save(output_path, quality=95, optimize=True)
-        print(f"Imagem salva em: {output_path}")
 
-        return output_path
+        # Calcular tempo total
+        end_time = time.time()
+        processing_time = end_time - start_time
+
+        print(f"Imagem salva em: {output_path}")
+        print(f"⏱️ Tempo de processamento: {processing_time:.2f} segundos")
+
+        return output_path, processing_time
 
     def cleanup(self):
         """Libera memória"""

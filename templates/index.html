@@ -28,7 +28,8 @@
                     <label for="modeSelect">Modo de Processamento:</label>
                     <select id="modeSelect" name="mode" onchange="updateStyleOptions()">
                         <option value="fast">⚡ Rápido (CartoonGAN) - 1-5 segundos</option>
-                        <option value="quality">🎨 Alta Qualidade (ControlNet) - 30-60 segundos</option>
+                        <option value="controlnet">🎯 ControlNet (Estrutura) - 30-60 segundos</option>
+                        <option value="img2img">🎨 Img2Img (Preserva Cores) - 40-70 segundos</option>
                     </select>
                 </div>
 
@@ -54,6 +55,10 @@
 
         <div id="results" class="results hidden">
             <h2>Resultado</h2>
+            <div class="processing-info">
+                <p>⏱️ Tempo de processamento: <strong id="processingTime">--</strong></p>
+                <p>🎨 Modo: <strong id="processingMode">--</strong></p>
+            </div>
             <div class="image-comparison">
                 <div class="image-box">
                     <h3>Imagem Original</h3>
@@ -127,8 +132,10 @@
             // Atualizar texto de loading
             if (mode === 'fast') {
                 loadingText.textContent = 'Processando com CartoonGAN... Isso leva apenas 1-5 segundos! ⚡';
+            } else if (mode === 'controlnet') {
+                loadingText.textContent = 'Processando com ControlNet (estrutura precisa)... 30-60 segundos 🎯';
             } else {
-                loadingText.textContent = 'Processando com ControlNet... Isso pode levar 30-60 segundos 🎨';
+                loadingText.textContent = 'Processando com Img2Img (preserva cores)... 40-70 segundos 🎨';
             }
         }
 
@@ -171,6 +178,25 @@
                     document.getElementById('inputImage').src = data.input_image;
                     document.getElementById('outputImage').src = data.output_image;
                     document.getElementById('downloadLink').href = data.output_image;
+                    
+                    // Mostrar informações de processamento
+                    const timeInSeconds = data.processing_time;
+                    const minutes = Math.floor(timeInSeconds / 60);
+                    const seconds = (timeInSeconds % 60).toFixed(2);
+                    const timeText = minutes > 0 
+                        ? `${minutes}min ${seconds}s`
+                        : `${seconds}s`;
+                    
+                    document.getElementById('processingTime').textContent = timeText;
+                    
+                    // Mostrar modo usado
+                    const modeLabels = {
+                        'fast': '⚡ Rápido (CartoonGAN)',
+                        'controlnet': '🎯 ControlNet (Estrutura)',
+                        'img2img': '🎨 Img2Img (Preserva Cores)'
+                    };
+                    document.getElementById('processingMode').textContent = 
+                        modeLabels[data.mode] || data.mode;
                     
                     results.classList.remove('hidden');
                 } else {

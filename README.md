@@ -25,10 +25,12 @@ pip install -r requirements.txt
 
 ### 2. Requisitos de Sistema
 
-- **GPU (Recomendado):** NVIDIA com CUDA para processamento rápido
-- **CPU:** Funciona, mas mais lento (1-3 minutos por imagem)
-- **RAM:** Mínimo 8GB (16GB recomendado)
-- **Espaço em disco:** ~6GB para modelos baixados
+**⚠️ SDXL requer mais recursos que SD 1.5:**
+
+- **GPU (OBRIGATÓRIA):** NVIDIA com 10GB+ VRAM (RTX 3080 ou superior)
+- **CPU:** Não recomendado (muito lento - 5-10 minutos por imagem)
+- **RAM:** Mínimo 16GB (32GB recomendado)
+- **Espaço em disco:** ~13GB para modelos SDXL
 
 ## 💻 Como Usar
 
@@ -54,16 +56,19 @@ Abra: `http://localhost:5000`
 
 Na primeira vez que você executar, os modelos serão baixados automaticamente:
 
-- ControlNet Canny (~1.5GB)
-- Stable Diffusion v1.5 (~4GB)
+- **ControlNet SDXL Canny** (~5GB)
+- **Stable Diffusion XL 1.0** (~7GB)
+- **Total:** ~12-13GB
+
+⏱️ **Tempo de download:** 15-30 minutos (depende da internet)
 
 Isso é feito uma única vez. Nas próximas execuções, os modelos já estarão salvos.
 
 ## 🛠️ Tecnologias
 
 - **Flask:** Framework web
-- **ControlNet:** Controle de geração de imagem
-- **Stable Diffusion:** Modelo de geração de imagem
+- **ControlNet SDXL:** Controle de geração de imagem (versão XL)
+- **Stable Diffusion XL:** Modelo de geração de alta qualidade
 - **Diffusers (Hugging Face):** Pipeline de processamento
 - **PyTorch:** Framework de deep learning
 

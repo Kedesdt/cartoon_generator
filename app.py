@@ -38,7 +38,7 @@ def get_styles():
     """Retorna os estilos disponíveis do arquivo JSON"""
     try:
         styles_path = os.path.join(os.path.dirname(__file__), "styles.json")
-        with open(styles_path, 'r', encoding='utf-8') as f:
+        with open(styles_path, "r", encoding="utf-8") as f:
             styles = json.load(f)
         return jsonify(styles)
     except Exception as e:
@@ -86,18 +86,28 @@ def upload_file():
         output_path = os.path.join(app.config["OUTPUT_FOLDER"], output_filename)
 
         print(f"Processando imagem: {input_path} | Modo: {mode} | Estilo: {style}")
-        
+
         # Escolher gerador baseado no modo
         if mode == "fast":
-            fast_generator.process_image(input_path, output_path, style=style)
-        else:  # quality
-            generator.process_image(input_path, output_path, style=style)
+            output_path, processing_time = fast_generator.process_image(
+                input_path, output_path, style=style
+            )
+        elif mode == "controlnet":
+            output_path, processing_time = generator.process_image(
+                input_path, output_path, style=style, method="controlnet"
+            )
+        else:  # img2img
+            output_path, processing_time = generator.process_image(
+                input_path, output_path, style=style, method="img2img"
+            )
 
         return jsonify(
             {
                 "success": True,
                 "input_image": f"/static/uploads/{input_filename}",
                 "output_image": f"/static/outputs/{output_filename}",
+                "processing_time": round(processing_time, 2),
+                "mode": mode,
             }
         )
 

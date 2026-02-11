@@ -123,5 +123,219 @@
       "prompt": "stained glass art, colorful glass, church window, vibrant, segmented, artistic, detailed",
       "description": "Arte em vitral colorido"
     }
+  },
+  "img2img": {
+    "cartoon": {
+      "name": "🎨 Cartoon Clássico",
+      "prompt": "cartoon style, vibrant colors, bold outlines, cel shaded, animation style, colorful, detailed, high quality",
+      "description": "Desenho animado tradicional"
+    },
+    "anime": {
+      "name": "🎌 Anime/Mangá",
+      "prompt": "anime style, manga art, vibrant colors, detailed eyes, japanese animation, high quality",
+      "description": "Estilo anime japonês"
+    },
+    "comic": {
+      "name": "💥 Quadrinhos",
+      "prompt": "comic book style, pop art, bold colors, halftone dots, graphic novel, detailed",
+      "description": "Estilo comic book americano"
+    },
+    "watercolor": {
+      "name": "🖌️ Aquarela",
+      "prompt": "watercolor painting, soft colors, artistic, painterly, beautiful, detailed",
+      "description": "Pintura em aquarela"
+    },
+    "pixar": {
+      "name": "🎬 Pixar 3D",
+      "prompt": "pixar style, 3d animation, disney pixar, rendered, smooth, colorful, detailed characters, high quality",
+      "description": "Animação 3D estilo Pixar/Disney"
+    },
+    "oil_painting": {
+      "name": "🖼️ Pintura a Óleo",
+      "prompt": "oil painting, impressionism, brushstrokes, artistic, canvas texture, museum quality, detailed",
+      "description": "Pintura clássica a óleo"
+    },
+    "sketch": {
+      "name": "✏️ Sketch",
+      "prompt": "pencil sketch, hand drawn, black and white, detailed lines, artistic sketch, high quality",
+      "description": "Desenho a lápis"
+    },
+    "cyberpunk": {
+      "name": "🌃 Cyberpunk",
+      "prompt": "cyberpunk style, neon colors, futuristic, sci-fi, glowing, detailed, high tech, vibrant",
+      "description": "Estilo cyberpunk futurista"
+    },
+    "vintage": {
+      "name": "📷 Vintage",
+      "prompt": "vintage style, retro colors, old photograph, nostalgic, aged, classic, detailed",
+      "description": "Fotografia vintage retrô"
+    },
+    "pop_art": {
+      "name": "🎭 Pop Art",
+      "prompt": "pop art style, andy warhol, bright colors, bold, graphic, screen print, iconic",
+      "description": "Arte pop estilo Andy Warhol"
+    },
+    "gothic": {
+      "name": "🦇 Gótico",
+      "prompt": "gothic art style, dark, dramatic, detailed, mysterious, baroque, ornate",
+      "description": "Arte gótica dramática"
+    },
+    "minimalist": {
+      "name": "⚪ Minimalista",
+      "prompt": "minimalist art, simple, clean lines, geometric, modern, elegant, vector style",
+      "description": "Arte minimalista e limpa"
+    },
+    "steampunk": {
+      "name": "⚙️ Steampunk",
+      "prompt": "steampunk style, victorian, mechanical, brass, gears, vintage technology, detailed",
+      "description": "Estilo steampunk vitoriano"
+    },
+    "fantasy": {
+      "name": "🧙 Fantasia",
+      "prompt": "fantasy art, magical, ethereal, detailed, painterly, mystical, epic, high quality",
+      "description": "Arte fantástica épica"
+    },
+    "noir": {
+      "name": "🎩 Film Noir",
+      "prompt": "film noir style, black and white, dramatic shadows, high contrast, cinematic, detective story",
+      "description": "Estilo filme noir P&B"
+    },
+    "graffiti": {
+      "name": "🎨 Graffiti",
+      "prompt": "graffiti art style, street art, spray paint, urban, colorful, bold, detailed",
+      "description": "Arte urbana graffiti"
+    },
+    "art_deco": {
+      "name": "💎 Art Deco",
+      "prompt": "art deco style, geometric, elegant, 1920s, luxury, symmetrical, decorative, detailed",
+      "description": "Estilo Art Deco anos 20"
+    },
+    "surreal": {
+      "name": "🌀 Surrealismo",
+      "prompt": "surrealist art, dream-like, surreal, imaginative, salvador dali style, artistic, detailed",
+      "description": "Arte surrealista"
+    },
+    "chibi": {
+      "name": "🥺 Chibi",
+      "prompt": "chibi style, cute, kawaii, super deformed, big eyes, small body, adorable, colorful",
+      "description": "Estilo chibi kawaii"
+    },
+    "realistic": {
+      "name": "📸 Fotorrealista",
+      "prompt": "photorealistic, detailed, lifelike, high resolution, professional photography, sharp",
+      "description": "Extremamente realista"
+    },
+    "stained_glass": {
+      "name": "🪟 Vitral",
+      "prompt": "stained glass art, colorful glass, church window, vibrant, segmented, artistic, detailed",
+      "description": "Arte em vitral colorido"
+    }
+  },
+  "controlnet": {
+    "cartoon": {
+      "name": "🎨 Cartoon Clássico",
+      "prompt": "cartoon style, vibrant colors, bold outlines, cel shaded, animation style, colorful, detailed, high quality",
+      "description": "Desenho animado tradicional"
+    },
+    "anime": {
+      "name": "🎌 Anime/Mangá",
+      "prompt": "anime style, manga art, vibrant colors, detailed eyes, japanese animation, high quality",
+      "description": "Estilo anime japonês"
+    },
+    "comic": {
+      "name": "💥 Quadrinhos",
+      "prompt": "comic book style, pop art, bold colors, halftone dots, graphic novel, detailed",
+      "description": "Estilo comic book americano"
+    },
+    "watercolor": {
+      "name": "🖌️ Aquarela",
+      "prompt": "watercolor painting, soft colors, artistic, painterly, beautiful, detailed",
+      "description": "Pintura em aquarela"
+    },
+    "pixar": {
+      "name": "🎬 Pixar 3D",
+      "prompt": "pixar style, 3d animation, disney pixar, rendered, smooth, colorful, detailed characters, high quality",
+      "description": "Animação 3D estilo Pixar/Disney"
+    },
+    "oil_painting": {
+      "name": "🖼️ Pintura a Óleo",
+      "prompt": "oil painting, impressionism, brushstrokes, artistic, canvas texture, museum quality, detailed",
+      "description": "Pintura clássica a óleo"
+    },
+    "sketch": {
+      "name": "✏️ Sketch",
+      "prompt": "pencil sketch, hand drawn, black and white, detailed lines, artistic sketch, high quality",
+      "description": "Desenho a lápis"
+    },
+    "cyberpunk": {
+      "name": "🌃 Cyberpunk",
+      "prompt": "cyberpunk style, neon colors, futuristic, sci-fi, glowing, detailed, high tech, vibrant",
+      "description": "Estilo cyberpunk futurista"
+    },
+    "vintage": {
+      "name": "📷 Vintage",
+      "prompt": "vintage style, retro colors, old photograph, nostalgic, aged, classic, detailed",
+      "description": "Fotografia vintage retrô"
+    },
+    "pop_art": {
+      "name": "🎭 Pop Art",
+      "prompt": "pop art style, andy warhol, bright colors, bold, graphic, screen print, iconic",
+      "description": "Arte pop estilo Andy Warhol"
+    },
+    "gothic": {
+      "name": "🦇 Gótico",
+      "prompt": "gothic art style, dark, dramatic, detailed, mysterious, baroque, ornate",
+      "description": "Arte gótica dramática"
+    },
+    "minimalist": {
+      "name": "⚪ Minimalista",
+      "prompt": "minimalist art, simple, clean lines, geometric, modern, elegant, vector style",
+      "description": "Arte minimalista e limpa"
+    },
+    "steampunk": {
+      "name": "⚙️ Steampunk",
+      "prompt": "steampunk style, victorian, mechanical, brass, gears, vintage technology, detailed",
+      "description": "Estilo steampunk vitoriano"
+    },
+    "fantasy": {
+      "name": "🧙 Fantasia",
+      "prompt": "fantasy art, magical, ethereal, detailed, painterly, mystical, epic, high quality",
+      "description": "Arte fantástica épica"
+    },
+    "noir": {
+      "name": "🎩 Film Noir",
+      "prompt": "film noir style, black and white, dramatic shadows, high contrast, cinematic, detective story",
+      "description": "Estilo filme noir P&B"
+    },
+    "graffiti": {
+      "name": "🎨 Graffiti",
+      "prompt": "graffiti art style, street art, spray paint, urban, colorful, bold, detailed",
+      "description": "Arte urbana graffiti"
+    },
+    "art_deco": {
+      "name": "💎 Art Deco",
+      "prompt": "art deco style, geometric, elegant, 1920s, luxury, symmetrical, decorative, detailed",
+      "description": "Estilo Art Deco anos 20"
+    },
+    "surreal": {
+      "name": "🌀 Surrealismo",
+      "prompt": "surrealist art, dream-like, surreal, imaginative, salvador dali style, artistic, detailed",
+      "description": "Arte surrealista"
+    },
+    "chibi": {
+      "name": "🥺 Chibi",
+      "prompt": "chibi style, cute, kawaii, super deformed, big eyes, small body, adorable, colorful",
+      "description": "Estilo chibi kawaii"
+    },
+    "realistic": {
+      "name": "📸 Fotorrealista",
+      "prompt": "photorealistic, detailed, lifelike, high resolution, professional photography, sharp",
+      "description": "Extremamente realista"
+    },
+    "stained_glass": {
+      "name": "🪟 Vitral",
+      "prompt": "stained glass art, colorful glass, church window, vibrant, segmented, artistic, detailed",
+      "description": "Arte em vitral colorido"
+    }
   }
 }
