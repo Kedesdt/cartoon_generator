@@ -96,9 +96,21 @@ def upload_file():
             output_path, processing_time = generator.process_image(
                 input_path, output_path, style=style, method="controlnet"
             )
-        else:  # img2img
+        elif mode == "img2img":
             output_path, processing_time = generator.process_image(
                 input_path, output_path, style=style, method="img2img"
+            )
+        elif mode == "depth":
+            output_path, processing_time = generator.process_image(
+                input_path, output_path, style=style, method="depth"
+            )
+        elif mode == "pix2pix":
+            output_path, processing_time = generator.process_image(
+                input_path, output_path, style=style, method="pix2pix"
+            )
+        else:  # gfpgan
+            output_path, processing_time = generator.process_image(
+                input_path, output_path, style=style, method="gfpgan"
             )
 
         return jsonify(
@@ -124,14 +136,20 @@ def send_static(path):
 
 if __name__ == "__main__":
     print("=" * 60)
-    print("🎨 Gerador de Cartoon - Modo Rápido e Qualidade")
+    print("🎨 Gerador de Cartoon - 6 Modos Disponíveis")
     print("=" * 60)
     print("\nCarregando aplicação...")
+    print("\n⚙️  MODOS DISPONÍVEIS:")
+    print("1. ⚡ Rápido (CartoonGAN): ~100MB, 1-5 segundos")
+    print("2. 🎯 ControlNet Canny: ~6GB, 30-60 segundos (estrutura)")
+    print("3. 🎨 Img2Img: ~6GB, 40-70 segundos (preserva cores)")
+    print("4. 🏔️  ControlNet Depth: ~6GB, 35-65 segundos (profundidade 3D)")
+    print("5. ✨ Instruct-Pix2Pix: ~6GB, 25-50 segundos (transformação guiada)")
+    print("6. 👤 GFPGAN+Cartoon: ~6.5GB, 50-90 segundos (restaura rosto)")
     print("\n⚠️  IMPORTANTE:")
-    print("- MODO RÁPIDO (CartoonGAN): ~100MB, 1-5 segundos")
-    print("- MODO QUALIDADE (ControlNet): ~6GB, 30-60 segundos")
     print("- Os modelos serão baixados automaticamente na primeira vez")
-    print("- GPU é recomendada para melhor performance\n")
-    print("=" * 60)
+    print("- GPU é fortemente recomendada para melhor performance")
+    print("- Modos 2-6 compartilham base SD 1.5 (~4GB)")
+    print("\n=" * 60)
 
     app.run(debug=True, host="0.0.0.0", port=5000)

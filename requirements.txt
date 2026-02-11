@@ -9,3 +9,7 @@ controlnet-aux
 opencv-python
 numpy
 timm
+gfpgan
+basicsr
+facexlib
+realesrgan

@@ -28,8 +28,11 @@
                     <label for="modeSelect">Modo de Processamento:</label>
                     <select id="modeSelect" name="mode" onchange="updateStyleOptions()">
                         <option value="fast">⚡ Rápido (CartoonGAN) - 1-5 segundos</option>
-                        <option value="controlnet">🎯 ControlNet (Estrutura) - 30-60 segundos</option>
+                        <option value="controlnet">🎯 ControlNet Canny (Estrutura) - 30-60 segundos</option>
                         <option value="img2img">🎨 Img2Img (Preserva Cores) - 40-70 segundos</option>
+                        <option value="depth">🏔️ ControlNet Depth (Profundidade 3D) - 35-65 segundos</option>
+                        <option value="pix2pix">✨ Instruct-Pix2Pix (Transformação Guiada) - 25-50 segundos</option>
+                        <option value="gfpgan">👤 GFPGAN + Cartoon (Restaura Rosto) - 50-90 segundos</option>
                     </select>
                 </div>
 
@@ -74,7 +77,7 @@
         </div>
 
         <footer>
-            <p>Usando CartoonGAN (modo rápido) + ControlNet + Stable Diffusion (alta qualidade) | Open Source</p>
+            <p>6 Modos: CartoonGAN (rápido) + ControlNet Canny + Img2Img + ControlNet Depth + Instruct-Pix2Pix + GFPGAN | Open Source</p>
         </footer>
     </div>
 
@@ -117,7 +120,19 @@
         // Atualizar opções de estilo baseado no modo
         function updateStyleOptions() {
             const mode = modeSelect.value;
-            const styles = styleOptions[mode] || {};
+            
+            // Modos que usam estilos "quality"
+            const qualityModes = ['controlnet', 'img2img', 'depth', 'pix2pix', 'gfpgan'];
+            
+            // Escolher conjunto de estilos baseado no modo
+            let styles;
+            if (mode === 'fast') {
+                styles = styleOptions.fast || {};
+            } else if (qualityModes.includes(mode)) {
+                styles = styleOptions.quality || {};
+            } else {
+                styles = {};
+            }
             
             styleSelect.innerHTML = '';
             
@@ -129,14 +144,17 @@
                 styleSelect.appendChild(option);
             }
             
-            // Atualizar texto de loading
-            if (mode === 'fast') {
-                loadingText.textContent = 'Processando com CartoonGAN... Isso leva apenas 1-5 segundos! ⚡';
-            } else if (mode === 'controlnet') {
-                loadingText.textContent = 'Processando com ControlNet (estrutura precisa)... 30-60 segundos 🎯';
-            } else {
-                loadingText.textContent = 'Processando com Img2Img (preserva cores)... 40-70 segundos 🎨';
-            }
+            // Atualizar texto de loading baseado no modo
+            const loadingMessages = {
+                fast: 'Processando com CartoonGAN... Isso leva apenas 1-5 segundos! ⚡',
+                controlnet: 'Processando com ControlNet Canny (estrutura precisa)... 30-60 segundos 🎯',
+                img2img: 'Processando com Img2Img (preserva cores)... 40-70 segundos 🎨',
+                depth: 'Processando com ControlNet Depth (profundidade 3D)... 35-65 segundos 🏔️',
+                pix2pix: 'Processando com Instruct-Pix2Pix (transformação guiada)... 25-50 segundos ✨',
+                gfpgan: 'Restaurando rosto e aplicando estilo... 50-90 segundos 👤'
+            };
+            
+            loadingText.textContent = loadingMessages[mode] || 'Processando imagem...';
         }
 
         // Inicializar: carregar estilos do servidor
@@ -192,8 +210,11 @@
                     // Mostrar modo usado
                     const modeLabels = {
                         'fast': '⚡ Rápido (CartoonGAN)',
-                        'controlnet': '🎯 ControlNet (Estrutura)',
-                        'img2img': '🎨 Img2Img (Preserva Cores)'
+                        'controlnet': '🎯 ControlNet Canny (Estrutura)',
+                        'img2img': '🎨 Img2Img (Preserva Cores)',
+                        'depth': '🏔️ ControlNet Depth (Profundidade 3D)',
+                        'pix2pix': '✨ Instruct-Pix2Pix (Transformação Guiada)',
+                        'gfpgan': '👤 GFPGAN + Cartoon (Restaura Rosto)'
                     };
                     document.getElementById('processingMode').textContent = 
                         modeLabels[data.mode] || data.mode;

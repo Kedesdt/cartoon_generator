@@ -2,10 +2,12 @@ import torch
 from diffusers import (
     StableDiffusionControlNetPipeline,
     StableDiffusionImg2ImgPipeline,
+    StableDiffusionInstructPix2PixPipeline,
     ControlNetModel,
     UniPCMultistepScheduler,
 )
 from controlnet_aux import CannyDetector
+from transformers import pipeline as transformers_pipeline
 from PIL import Image
 import numpy as np
 import cv2
@@ -50,7 +52,11 @@ class CartoonGenerator:
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.controlnet_pipe = None
         self.img2img_pipe = None
+        self.depth_pipe = None
+        self.pix2pix_pipe = None
+        self.gfpgan_model = None
         self.canny_detector = None
+        self.depth_estimator = None
         print(f"Usando dispositivo: {self.device}")
 
     def load_model(self, method="controlnet"):
@@ -58,7 +64,7 @@ class CartoonGenerator:
         Carrega os modelos Stable Diffusion
 
         Args:
-            method: "controlnet" ou "img2img"
+            method: "controlnet", "img2img", "depth", "pix2pix", ou "gfpgan"
         """
         if method == "controlnet":
             if self.controlnet_pipe is not None:
@@ -97,7 +103,7 @@ class CartoonGenerator:
 
             print("ControlNet carregado com sucesso!")
 
-        else:  # img2img
+        elif method == "img2img":
             if self.img2img_pipe is not None:
                 return
 
@@ -123,6 +129,125 @@ class CartoonGenerator:
                 self.img2img_pipe.enable_model_cpu_offload()
 
             print("Img2Img carregado com sucesso!")
+            
+        elif method == "depth":
+            if self.depth_pipe is not None:
+                return
+
+            print(
+                "Carregando ControlNet Depth... Isso pode demorar alguns minutos na primeira vez."
+            )
+
+            # Carregar ControlNet Depth
+            controlnet = ControlNetModel.from_pretrained(
+                "lllyasviel/sd-controlnet-depth",
+                torch_dtype=torch.float16 if self.device == "cuda" else torch.float32,
+            )
+
+            # Carregar Stable Diffusion com ControlNet Depth
+            self.depth_pipe = StableDiffusionControlNetPipeline.from_pretrained(
+                "runwayml/stable-diffusion-v1-5",
+                controlnet=controlnet,
+                torch_dtype=torch.float16 if self.device == "cuda" else torch.float32,
+                safety_checker=None,
+            )
+
+            # Otimizações
+            self.depth_pipe.scheduler = UniPCMultistepScheduler.from_config(
+                self.depth_pipe.scheduler.config
+            )
+            self.depth_pipe = self.depth_pipe.to(self.device)
+
+            # Habilitar otimizações de memória
+            if self.device == "cuda":
+                self.depth_pipe.enable_model_cpu_offload()
+
+            # Estimador de profundidade
+            self.depth_estimator = transformers_pipeline(
+                "depth-estimation",
+                model="Intel/dpt-large",
+                device=0 if self.device == "cuda" else -1
+            )
+
+            print("ControlNet Depth carregado com sucesso!")
+            
+        elif method == "pix2pix":
+            if self.pix2pix_pipe is not None:
+                return
+
+            print(
+                "Carregando Instruct-Pix2Pix... Isso pode demorar alguns minutos na primeira vez."
+            )
+
+            # Carregar Instruct-Pix2Pix
+            self.pix2pix_pipe = StableDiffusionInstructPix2PixPipeline.from_pretrained(
+                "timbrooks/instruct-pix2pix",
+                torch_dtype=torch.float16 if self.device == "cuda" else torch.float32,
+                safety_checker=None,
+            )
+
+            self.pix2pix_pipe = self.pix2pix_pipe.to(self.device)
+
+            # Habilitar otimizações de memória
+            if self.device == "cuda":
+                self.pix2pix_pipe.enable_model_cpu_offload()
+
+            print("Instruct-Pix2Pix carregado com sucesso!")
+            
+        elif method == "gfpgan":
+            if self.gfpgan_model is not None and self.img2img_pipe is not None:
+                return
+
+            print(
+                "Carregando GFPGAN + Img2Img... Isso pode demorar alguns minutos na primeira vez."
+            )
+
+            # Carregar GFPGAN para restauração facial
+            try:
+                from gfpgan import GFPGANer
+                from basicsr.archs.rrdbnet_arch import RRDBNet
+                
+                model_path = os.path.join(
+                    os.path.dirname(__file__),
+                    "huggingface",
+                    "GFPGANv1.4.pth"
+                )
+                
+                # Baixar modelo se não existir
+                if not os.path.exists(model_path):
+                    import urllib.request
+                    os.makedirs(os.path.dirname(model_path), exist_ok=True)
+                    print("Baixando modelo GFPGAN...")
+                    url = "https://github.com/TencentARC/GFPGAN/releases/download/v1.3.0/GFPGANv1.4.pth"
+                    urllib.request.urlretrieve(url, model_path)
+                
+                self.gfpgan_model = GFPGANer(
+                    model_path=model_path,
+                    upscale=1,
+                    arch='clean',
+                    channel_multiplier=2,
+                    bg_upsampler=None,
+                    device=self.device
+                )
+            except Exception as e:
+                print(f"Aviso: GFPGAN não disponível ({e}). Usando apenas Img2Img.")
+                self.gfpgan_model = None
+
+            # Carregar Img2Img também
+            if self.img2img_pipe is None:
+                self.img2img_pipe = StableDiffusionImg2ImgPipeline.from_pretrained(
+                    "runwayml/stable-diffusion-v1-5",
+                    torch_dtype=torch.float16 if self.device == "cuda" else torch.float32,
+                    safety_checker=None,
+                )
+                self.img2img_pipe.scheduler = UniPCMultistepScheduler.from_config(
+                    self.img2img_pipe.scheduler.config
+                )
+                self.img2img_pipe = self.img2img_pipe.to(self.device)
+                if self.device == "cuda":
+                    self.img2img_pipe.enable_model_cpu_offload()
+
+            print("GFPGAN + Img2Img carregado com sucesso!")
 
     def process_image(
         self, image_path, output_path, style="cartoon", method="controlnet"
@@ -134,7 +259,7 @@ class CartoonGenerator:
             image_path: Caminho da imagem de entrada
             output_path: Caminho para salvar a imagem gerada
             style: Estilo do cartoon (cartoon, anime, comic, etc)
-            method: "controlnet" (preserva estrutura) ou "img2img" (preserva cores)
+            method: "controlnet", "img2img", "depth", "pix2pix", ou "gfpgan"
 
         Returns:
             tuple: (output_path, processing_time)
@@ -181,7 +306,72 @@ class CartoonGenerator:
                     guidance_scale=7.5,
                     controlnet_conditioning_scale=0.8,
                 ).images[0]
-            else:  # img2img
+                
+            elif method == "depth":
+                # Estimar mapa de profundidade
+                print("Estimando mapa de profundidade...")
+                depth_map = self.depth_estimator(input_image)["depth"]
+                
+                # Converter para PIL Image
+                import numpy as np
+                depth_array = depth_map.cpu().numpy()
+                depth_array = (depth_array - depth_array.min()) / (depth_array.max() - depth_array.min()) * 255
+                depth_image = Image.fromarray(depth_array.astype(np.uint8)).convert("RGB")
+                
+                result = self.depth_pipe(
+                    prompt=prompt,
+                    negative_prompt=negative_prompt,
+                    image=depth_image,
+                    num_inference_steps=20,
+                    guidance_scale=7.5,
+                    controlnet_conditioning_scale=0.8,
+                ).images[0]
+                
+            elif method == "pix2pix":
+                # Instruct-Pix2Pix usa instruções para transformação
+                instruction = f"Transform into {prompt}"
+                print(f"Aplicando instrução: {instruction}")
+                
+                result = self.pix2pix_pipe(
+                    instruction,
+                    image=input_image,
+                    num_inference_steps=20,
+                    image_guidance_scale=1.5,
+                    guidance_scale=7.5,
+                ).images[0]
+                
+            elif method == "gfpgan":
+                # Primeiro aplica GFPGAN para restaurar o rosto
+                print("Restaurando rosto com GFPGAN...")
+                import cv2
+                import numpy as np
+                
+                # Converter PIL para numpy/cv2
+                img_cv = cv2.cvtColor(np.array(input_image), cv2.COLOR_RGB2BGR)
+                
+                # Aplicar GFPGAN
+                _, _, output = self.gfpgan_model.enhance(
+                    img_cv, 
+                    has_aligned=False, 
+                    only_center_face=False, 
+                    paste_back=True
+                )
+                
+                # Converter de volta para PIL
+                restored_image = Image.fromarray(cv2.cvtColor(output, cv2.COLOR_BGR2RGB))
+                
+                # Depois aplica img2img para estilizar
+                print("Aplicando estilo cartoon...")
+                result = self.img2img_pipe(
+                    prompt=prompt,
+                    negative_prompt=negative_prompt,
+                    image=restored_image,
+                    strength=0.55,  # Menor strength para preservar restauração
+                    num_inference_steps=25,
+                    guidance_scale=7.0,
+                ).images[0]
+                
+            else:  # img2img (default)
                 result = self.img2img_pipe(
                     prompt=prompt,
                     negative_prompt=negative_prompt,
@@ -211,6 +401,18 @@ class CartoonGenerator:
         if self.img2img_pipe is not None:
             del self.img2img_pipe
             self.img2img_pipe = None
+        if self.depth_pipe is not None:
+            del self.depth_pipe
+            self.depth_pipe = None
+        if self.pix2pix_pipe is not None:
+            del self.pix2pix_pipe
+            self.pix2pix_pipe = None
+        if self.gfpgan_model is not None:
+            del self.gfpgan_model
+            self.gfpgan_model = None
+        if self.depth_estimator is not None:
+            del self.depth_estimator
+            self.depth_estimator = None
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
